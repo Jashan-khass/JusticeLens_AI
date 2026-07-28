@@ -113,7 +113,6 @@ Combined with Legal Knowledge Base → Final Answer
 - 🎙️ **Voice Input** – Web Speech API
 - 🔊 **Text-to-Speech** – Read responses aloud
 - 🌍 **4 Languages** – English, हिंदी, ਪੰਜਾਬੀ, اردو
-- ✅ **No API Keys** – Fully open source
 
 ---
 
