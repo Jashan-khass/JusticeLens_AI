@@ -1,0 +1,37 @@
+{
+  "messages": [
+    {
+      "id": 1,
+      "timestamp": "2026-07-24T13:48:02.493508",
+      "message": "Online UPI fraud happened to me",
+      "response_preview": "It sounds like you've been a victim of online UPI fraud, which typically involves scammers using var",
+      "category": "fraud",
+      "mode": "both"
+    },
+    {
+      "id": 2,
+      "timestamp": "2026-07-24T13:49:05.398760",
+      "message": "car chori ho gayi",
+      "response_preview": "It appears your car has been stolen. This is a serious matter and needs immediate attention.\n\nUnder ",
+      "category": "theft",
+      "mode": "both"
+    },
+    {
+      "id": 3,
+      "timestamp": "2026-07-24T13:49:52.338311",
+      "message": "car chori ho gayi",
+      "response_preview": "It sounds like your car has been stolen. This is a serious matter, and the law in India treats it as",
+      "category": "theft",
+      "mode": "web"
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-07-24T13:50:18.649815",
+      "message": "Landlord not returning security deposit",
+      "response_preview": "It sounds like your landlord is not returning your security deposit, which is a common issue faced b",
+      "category": "landlord",
+      "mode": "both"
+    }
+  ],
+  "sessions": []
+}
