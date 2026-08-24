@@ -1,7 +1,19 @@
-@"
+# Python
 venv/
-.venv/
 __pycache__/
-.env
 *.pyc
-"@ | Set-Content .gitignore
+
+# Node
+frontend/node_modules/
+frontend/.cache/
+
+# React build
+frontend/build/
+
+# Environment / secrets
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/

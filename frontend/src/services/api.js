@@ -21,6 +21,13 @@ api.interceptors.response.use(
   }
 );
 
+// Ensure Authorization header uses Bearer format (override broken interceptor if present)
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("jl_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 // ── RAG / Legal APIs ──
 export const chatAPI = (message, mode = "both", lang = "en") => api.post("/api/chat", { message, mode, lang }).then(r => r.data);
 export const statsAPI = () => api.get("/api/stats").then(r => r.data);
@@ -50,6 +57,10 @@ export const logoutAPI = () =>
   api.post("/api/auth/logout").then(r => r.data);
 export const meAPI = () =>
   api.get("/api/auth/me").then(r => r.data);
+
+// ── Profile APIs ──
+export const getProfileAPI = () => api.get("/api/profile").then(r => r.data);
+export const updateProfileAPI = (payload) => api.put("/api/profile", payload).then(r => r.data);
 
 // ── Chat History APIs ──
 export const getChatsAPI = () =>

@@ -3,7 +3,7 @@ JusticeLens AI v3 – RAG-Powered Legal Intelligence Backend
 Uses: TF-IDF Vector Search (RAG), DuckDuckGo web search, PDF knowledge base
 No API keys required – fully open source
 """
-from gemini_service import get_gemini_response
+from gemini_service import get_gemini_response, is_gemini_available
 from flask import Flask, jsonify, request, send_file
 import json, os, re, pickle, io, random, hashlib, hmac, base64, time
 from datetime import datetime
@@ -173,6 +173,46 @@ def get_me(user_id):
             return jsonify({"user": {"email": email, "name": user["name"], "user_id": user_id}})
     return jsonify({"error": "User not found"}), 404
 
+
+# ── Profile Routes ─────────────────────────────────
+@app.route("/api/profile")
+@require_auth
+def get_profile(user_id):
+    users = load_users()
+    for email, user in users.items():
+        if user.get("user_id") == user_id:
+            profile = {
+                "email": email,
+                "name": user.get("name", ""),
+                "user_id": user_id,
+                "bio": user.get("bio", ""),
+                "avatar_url": user.get("avatar_url", "")
+            }
+            return jsonify({"profile": profile})
+    return jsonify({"error": "User not found"}), 404
+
+
+@app.route("/api/profile", methods=["PUT"])
+@require_auth
+def update_profile(user_id):
+    data = request.get_json() or {}
+    name = data.get("name")
+    bio = data.get("bio")
+    avatar_url = data.get("avatar_url")
+
+    users = load_users()
+    for email, user in users.items():
+        if user.get("user_id") == user_id:
+            if name:
+                user["name"] = name
+            if bio is not None:
+                user["bio"] = bio
+            if avatar_url is not None:
+                user["avatar_url"] = avatar_url
+            save_users(users)
+            return jsonify({"message": "Profile updated", "profile": {"email": email, "name": user.get("name"), "user_id": user_id, "bio": user.get("bio", ""), "avatar_url": user.get("avatar_url", "")}})
+    return jsonify({"error": "User not found"}), 404
+
 @app.route("/api/auth/logout", methods=["POST"])
 @require_auth
 def logout(user_id):
@@ -211,11 +251,68 @@ def clear_chats(user_id):
     save_chats(user_id, {"messages": [], "sessions": []})
     return jsonify({"message": "Chat history cleared"})
 
+
+# ── Gemini callback endpoint (webhook) ─────────────────
+@app.route("/api/gemini/callback", methods=["POST"])
+def gemini_callback():
+    """Endpoint to receive asynchronous Gemini/webhook responses.
+
+    Expected JSON payload (example):
+      {
+        "user_id": "user_abc123",
+        "callback_id": "client-msg-uuid",
+        "message": "Original user question",
+        "answer": "Generated text from Gemini",
+        "meta": { ... optional metadata ... }
+      }
+
+    Security: If environment variable GEMINI_CALLBACK_TOKEN is set, the caller must
+    include header X-GEMINI-CALLBACK-TOKEN with the same value. If the env var is
+    not set the endpoint will accept unauthenticated posts (use only in trusted networks).
+    """
+    # Optional token verification
+    secret = os.environ.get("GEMINI_CALLBACK_TOKEN")
+    if secret:
+        hdr = request.headers.get("X-GEMINI-CALLBACK-TOKEN", "")
+        if hdr != secret:
+            return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    user_id = data.get("user_id")
+    callback_id = data.get("callback_id") or data.get("message_id")
+    answer = data.get("answer") or data.get("gemini_answer") or data.get("response")
+    original = data.get("message") or ""
+    meta = data.get("meta") or {}
+
+    if not user_id or not answer:
+        return jsonify({"error": "user_id and answer required"}), 400
+
+    try:
+        chat_data = load_chats(user_id)
+    except Exception:
+        chat_data = {"messages": [], "sessions": []}
+
+    entry = {
+        "id": len(chat_data.get("messages", [])) + 1,
+        "timestamp": datetime.now().isoformat(),
+        "message": original,
+        "response_preview": (answer or "")[:100],
+        "gemini_answer": answer,
+        "callback_id": callback_id,
+        "meta": meta
+    }
+
+    chat_data.setdefault("messages", []).append(entry)
+    save_chats(user_id, chat_data)
+
+    return jsonify({"status": "ok", "saved": True})
+
+
 # ── Load RAG Index ────────────────────────────────
 BASE = os.path.dirname(os.path.abspath(__file__))
 IDX = os.path.join(BASE, "..", "data", "index")
 
-print("⚙️  Loading RAG knowledge base...")
+print("Loading RAG knowledge base...")
 with open(os.path.join(IDX, "chunks.pkl"), "rb") as f:
     CHUNKS = pickle.load(f)
 with open(os.path.join(IDX, "vectorizer.pkl"), "rb") as f:
@@ -228,7 +325,7 @@ TFIDF_MATRIX = scipy.sparse.load_npz(os.path.join(IDX, "tfidf_matrix.npz"))
 with open(os.path.join(IDX, "cases.json")) as f:
     CASES = json.load(f)
 
-print(f"✅ Loaded {len(CHUNKS)} RAG chunks, {len(CASES)} cases")
+print(f"Loaded {len(CHUNKS)} RAG chunks, {len(CASES)} cases")
 
 # ── RAG Core ──────────────────────────────────────
 def rag_retrieve(query, top_k=5, filter_type=None):
@@ -349,39 +446,9 @@ def get_ai_summary(message, kb, rag_text, web_results, lang="en"):
     lang_map = {"en":"English","hi":"Hindi (Devanagari)","pa":"Punjabi (Gurmukhi)","ur":"Urdu (Perso-Arabic)","hx":"Hinglish (natural Hindi+English mix)"}
     target_lang = lang_map.get(lang, "English")
     
-    # Try Gemini first
-    try:
-        web_snippets = "\n".join(
-            f"- {r.get('snippet', '')}" for r in (web_results or []) if r.get("snippet")
-        )
-        prompt = f"""You are a legal information assistant for Indian law (JusticeLens AI).
-Answer the user's question in simple, clear language. Do NOT give this as formal
-legal advice — remind the user to consult a lawyer for their specific case.
+    # External LLMs (Gemini) are disabled per user request — always use local fallback generation only.
+    # This avoids requiring any extra API keys or external service.
 
-IMPORTANT: You MUST write your ENTIRE response in {target_lang}.
-Respond ONLY in {target_lang}.
-
-User question: {message}
-
-Detected category: {kb.get('title')}
-
-Relevant laws: {', '.join(kb.get('laws', []))}
-
-Retrieved case-law context (from internal knowledge base):
-{rag_text}
-
-Recent web search snippets (may be empty):
-{web_snippets or '(none)'}
-
-Now write a short, well-structured answer (max ~200 words) in {target_lang} covering:
-1. What's likely going on
-2. The key legal provisions that apply
-3. The immediate next steps the person should take
-"""
-        return get_gemini_response(prompt)
-    except Exception:
-        pass  # Gemini not available — fallback to built-in answer
-    
     # ── Fallback: Build answer from KB + web results (NO hallucination) ──
     steps_text = "\n".join(f"\u2022 {s}" for s in kb.get("steps", []))
     rights_text = "\n".join(f"\u2022 {r}" for r in kb.get("rights", []))
@@ -400,23 +467,48 @@ Now write a short, well-structured answer (max ~200 words) in {target_lang} cove
     if rag_text and "No relevant" not in rag_text:
         rag_extra = "\n\U0001f4c4 **From Supreme Court Judgment Database:**\n" + rag_text[:400]
     
-    answer = f"""**{kb.get('icon', '\u2696\ufe0f')} {kb.get('title', 'Legal Guidance')}**
+    # Translate section headers for small set of supported languages
+    labels = {
+        'en': {
+            'applicable': '\u2696 Applicable Laws:',
+            'rights': '\U0001f6e1 Your Rights:',
+            'steps': '\U0001f9ed Steps to Take:',
+            'helplines': '\U0001f4de Helplines:',
+            'caution': '\u26a0\ufe0f *This is informational guidance only. Please consult a qualified lawyer for advice specific to your situation.*'
+        },
+        'hi': {
+            'applicable': '\u2696 लागू कानून:',
+            'rights': '\U0001f6e1 आपके कानूनी अधिकार:',
+            'steps': '\U0001f9ed करने के कदम:',
+            'helplines': '\U0001f4de हेल्पलाइन:',
+            'caution': '\u26a0\ufe0f *यह केवल सूचना के उद्देश्य से है। कृपया अपने मामले के लिए किसी योग्य वकील से सलाह लें।*'
+        },
+        'pa': {
+            'applicable': '\u2696 ਲਾਗੂ ਕਾਨੂੰਨ:',
+            'rights': '\U0001f6e1 ਤੁਹਾਡੇ ਕਾਨੂੰਨੀ ਅਧਿਕਾਰ:',
+            'steps': '\U0001f9ed ਕੀ ਕਰਨ ਦੇ ਕਦਮ:',
+            'helplines': '\U0001f4de ਹੈਲਪਲਾਈਨ:',
+            'caution': '\u26a0\ufe0f *ਇਹ ਸਿਰਫ਼ ਜਾਣਕਾਰੀ ਲਈ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੇ ਕੇਸ ਲਈ ਕਿਸੇ ਯੋਗ ਵਕੀਲ ਨਾਲ 상담 ਕਰੋ।*'
+        },
+        'ur': {
+            'applicable': '\u2696 قابل اطلاق قوانین:',
+            'rights': '\U0001f6e1 آپ کے قانونی حقوق:',
+            'steps': '\U0001f9ed کرنے کے اقدامات:',
+            'helplines': '\U0001f4de ہیلپ لائنز:',
+            'caution': '\u26a0\ufe0f *یہ صرف معلوماتی مقاصد کے لئے ہے۔ براہِ کرم اپنے معاملے کے لئے کسی اہل وکیل سے مشورہ کریں۔*'
+        },
+        'hx': {
+            'applicable': '\u2696 लागू कानून / Applicable Laws:',
+            'rights': '\U0001f6e1 आपके अधिकार / Your Rights:',
+            'steps': '\U0001f9ed कदम / Steps:',
+            'helplines': '\U0001f4de हेल्पलाइन / Helplines:',
+            'caution': '\u26a0\ufe0f *यह सूचना मात्र है — कृपया वकील से सलाह लें।*'
+        }
+    }
 
-**\u2696 Applicable Laws:**
-{laws_text}
+    lbl = labels.get(lang, labels['en'])
 
-**\U0001f6e1 Your Rights:**
-{rights_text}
-
-**\U0001f9ed Steps to Take:**
-{steps_text}
-{web_extra}
-{rag_extra}
-
-**\U0001f4de Helplines:**
-{helplines_text}
-
-\u26a0\ufe0f *This is informational guidance only. Please consult a qualified lawyer for advice specific to your situation.*"""
+    answer = f"""**{kb.get('icon', '\u2696\ufe0f')} {kb.get('title', 'Legal Guidance')}**\n\n{lbl['applicable']}\n{laws_text}\n\n{lbl['rights']}\n{rights_text}\n\n{lbl['steps']}\n{steps_text}\n{web_extra}\n{rag_extra}\n\n{lbl['helplines']}\n{helplines_text}\n\n{lbl['caution']}"""
 
     return answer.strip()
 
@@ -1132,5 +1224,5 @@ def download_complaint():
 
 
 if __name__ == "__main__":
-    print("🚀 JusticeLens AI Backend Started")
+    print("JusticeLens AI Backend Started")
     app.run(host="0.0.0.0", port=5000, debug=True)

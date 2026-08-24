@@ -19,11 +19,17 @@ if GEMINI_API_KEY:
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel("gemini-2.5-flash")
         _gemini_available = True
-        print("✅ Gemini AI enabled")
+        print("Gemini AI enabled")
     except Exception as e:
-        print(f"⚠️ Gemini init failed: {e}")
+        # Print a plain-text error to avoid Unicode issues on Windows consoles
+        print("Gemini init failed:", e)
 else:
-    print("ℹ️ Gemini API key not set – using built-in RAG + KB fallback")
+    print("Gemini API key not set - using built-in RAG + KB fallback")
+
+
+def is_gemini_available():
+    """Returns True if Gemini has been successfully initialized with an API key."""
+    return _gemini_available
 
 def get_gemini_response(query):
     if not _gemini_available or model is None:
