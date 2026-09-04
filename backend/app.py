@@ -316,7 +316,7 @@ def gemini_callback():
 
 # ── Load RAG Index ────────────────────────────────
 BASE = os.path.dirname(os.path.abspath(__file__))
-IDX = os.path.join(BASE, "..", "data", "index")
+IDX = os.path.join(BASE, "index")
 
 print("Loading RAG knowledge base...")
 with open(os.path.join(IDX, "chunks.pkl"), "rb") as f:
