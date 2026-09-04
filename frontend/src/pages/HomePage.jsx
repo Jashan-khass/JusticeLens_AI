@@ -257,6 +257,7 @@ function AnalysisCard({ data, lang="en" }) {
   const nav = useNavigate();
   const u = UI[lang] || UI.en;
   const { analysis, prediction, rag_results, web_results, similar_cases, meta } = data;
+  const showCaseResearch = !meta?.informational;
   const pc = prediction.success_rate >= 70 ? "var(--ok)" : prediction.success_rate >= 50 ? "var(--gold)" : "var(--err)";
   const [showRag, setShowRag] = useState(false);
   const [showWeb, setShowWeb] = useState(false);
@@ -295,7 +296,7 @@ function AnalysisCard({ data, lang="en" }) {
       </div>
 
       {/* RAG Answer */}
-      <Section color="#2ECC9A" title={u.ragSec}>
+      {showCaseResearch && <Section color="#2ECC9A" title={u.ragSec}>
         <div style={{ background: "rgba(46,204,154,.06)", border: "1px solid rgba(46,204,154,.2)", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, lineHeight: 1.75, color: "var(--text)", marginBottom: 8 }}>
           {rag_results.answer || u.noRag}
         </div>
@@ -303,7 +304,7 @@ function AnalysisCard({ data, lang="en" }) {
           {showRag ? u.hide : u.show} {rag_results.total_retrieved} {u.srcChunks}
         </button>
         {showRag && <div style={{ marginTop: 8 }}>{rag_results.source_chunks.map((c, i) => <SourceChip key={i} chunk={c} />)}</div>}
-      </Section>
+      </Section>}
 
       {/* Web results */}
       {web_results?.length > 0 && (
@@ -332,7 +333,7 @@ function AnalysisCard({ data, lang="en" }) {
       </Section>
 
       {/* Prediction */}
-      <Section color="var(--gold)" title={u.prdSec}>
+      {showCaseResearch && <Section color="var(--gold)" title={u.prdSec}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {[[u.successRate, `${prediction.success_rate}%`, pc, prediction.success_rate], [u.duration, prediction.duration, "var(--text)", null], [u.riskLevel, prediction.risk_level, "var(--text)", null], [u.scCases, meta.total_cases, "var(--gold)", null]].map(([l, v, c, bar]) => (
             <div key={l} style={{ background: "rgba(201,168,76,.04)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px" }}>
@@ -342,10 +343,10 @@ function AnalysisCard({ data, lang="en" }) {
             </div>
           ))}
         </div>
-      </Section>
+      </Section>}
 
       {/* Similar cases */}
-      <Section color="var(--gold)" title={u.simSec}>
+      {showCaseResearch && <Section color="var(--gold)" title={u.simSec}>
         <button style={{ fontSize: 11, background: "none", border: "1px solid rgba(201,168,76,.3)", color: "var(--gold)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", marginBottom: 8 }} onClick={() => setShowSim(!showSim)}>
           {showSim ? u.hide : u.show} {similar_cases.length} {u.cases}
         </button>
@@ -358,7 +359,7 @@ function AnalysisCard({ data, lang="en" }) {
             <p style={{ fontSize: 11.5, color: "var(--dim)", lineHeight: 1.55 }}>{c.summary}</p>
           </div>
         ))}
-      </Section>
+      </Section>}
 
       {/* Helplines */}
       <Section color="var(--gold)" title={u.hlpSec}>

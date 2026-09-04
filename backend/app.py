@@ -521,7 +521,7 @@ def get_ai_summary(message, kb, rag_text, web_results, lang="en"):
 
     lbl = labels.get(lang, labels['en'])
 
-    answer = f"""**{kb.get('icon', '\u2696\ufe0f')} {kb.get('title', 'Legal Guidance')}**\n\n{lbl['applicable']}\n{laws_text}\n\n{lbl['rights']}\n{rights_text}\n\n{lbl['steps']}\n{steps_text}\n{web_extra}\n{rag_extra}\n\n{lbl['helplines']}\n{helplines_text}\n\n{lbl['caution']}"""
+    answer = f"""**{kb.get('icon', '\u2696\ufe0f')} {kb.get('title', 'Legal Guidance')}**\n\n{kb.get('summary', '')}\n\n{lbl['applicable']}\n{laws_text}\n\n{lbl['rights']}\n{rights_text}\n\n{lbl['steps']}\n{steps_text}\n{web_extra}\n{rag_extra}\n\n{lbl['helplines']}\n{helplines_text}\n\n{lbl['caution']}"""
 
     return answer.strip()
 
@@ -620,6 +620,7 @@ KB = {
     "law_definition": {
         "title": "Understanding Law",
         "icon": "📚",
+        "summary": "Law is a system of rules made or recognised by a legitimate authority to regulate behaviour, protect rights, resolve disputes, and provide remedies. In India, the Constitution is the highest law, followed by legislation, delegated rules, and judicial decisions.",
         "laws": ["The Constitution of India is the supreme law", "Acts are laws passed by Parliament or a State Legislature", "Rules and regulations explain how an Act is applied", "Courts interpret and enforce laws"],
         "rights": ["Everyone is equal before the law", "You can seek legal representation", "You can approach a court or legal-aid authority", "You should receive a fair hearing"],
         "steps": ["Identify the subject and jurisdiction", "Read the relevant Act and current rules", "Collect facts and supporting documents", "Get advice from a qualified lawyer or free legal-aid service"],
@@ -629,6 +630,7 @@ KB = {
     "legal_case": {
         "title": "Legal Case Basics",
         "icon": "⚖️",
+        "summary": "A legal case is a formal dispute or proceeding brought before a court or tribunal. The court examines facts, evidence, and applicable law before issuing an order or judgment.",
         "laws": ["Civil cases generally concern rights, money, property, or contracts", "Criminal cases concern offences investigated and prosecuted by the State", "The Constitution and procedural laws govern court remedies"],
         "rights": ["Notice of proceedings", "Opportunity to present evidence and arguments", "Legal representation", "Appeal or review where permitted by law"],
         "steps": ["Identify whether the matter is civil, criminal, family, consumer, or constitutional", "Preserve notices, contracts, messages, and other evidence", "Check limitation periods and the correct court", "Consult a lawyer or legal-aid service before filing"],
@@ -979,8 +981,9 @@ def chat():
     kb = KB.get(key, KB["default"])
 
     # ── RAG Retrieval from PDFs ──
-    rag_chunks = rag_retrieve(message, top_k=5)
-    rag_text = rag_answer(message, rag_chunks)
+    informational = key in ("law_definition", "legal_case")
+    rag_chunks = [] if informational else rag_retrieve(message, top_k=5)
+    rag_text = "" if informational else rag_answer(message, rag_chunks)
 
     # ── Web Search (if mode includes web) ──
     web_results = []
@@ -996,11 +999,11 @@ def chat():
         relevance = sum(1 for w in query_words if w in case_text)
         scored_cases.append((relevance, c))
     scored_cases.sort(key=lambda x: x[0], reverse=True)
-    top_scored = [c for score, c in scored_cases[:5] if score > 0]
-    if not top_scored:
+    top_scored = [] if informational else [c for score, c in scored_cases[:5] if score > 0]
+    if not top_scored and not informational:
         # Fallback: match by detected problem category
         top_scored = [c for c in CASES if key.lower() in c.get("case_type","").lower() or key.lower() in c.get("summary","").lower()][:3]
-    if not top_scored:
+    if not top_scored and not informational:
         top_scored = CASES[:3]
 
     # ── Gemini AI Answer (grounded on RAG + web results above, in selected language) ──
@@ -1049,6 +1052,7 @@ def chat():
         "meta": {
             "total_cases": len(CASES),
             "rag_chunks": len(CHUNKS),
+            "informational": informational,
             "timestamp": datetime.now().isoformat()
         }
     })
