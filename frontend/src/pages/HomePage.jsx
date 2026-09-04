@@ -257,7 +257,8 @@ function AnalysisCard({ data, lang="en" }) {
   const nav = useNavigate();
   const u = UI[lang] || UI.en;
   const { analysis, prediction, rag_results, web_results, similar_cases, meta } = data;
-  const showCaseResearch = !meta?.informational;
+  const informational = meta?.informational || ["law_definition", "legal_case"].includes(data.detected_problem);
+  const showCaseResearch = !informational;
   const pc = prediction.success_rate >= 70 ? "var(--ok)" : prediction.success_rate >= 50 ? "var(--gold)" : "var(--err)";
   const [showRag, setShowRag] = useState(false);
   const [showWeb, setShowWeb] = useState(false);
