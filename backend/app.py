@@ -24,9 +24,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # ── JWT Auth Config ─────────────────────────────
 JWT_SECRET = hashlib.sha256(os.urandom(32)).hexdigest()
 JWT_ALGO = "HS256"
-USERS_FILE = os.path.join(BASE_DIR, "..", "data", "users.json")
-CHATS_DIR = os.path.join(BASE_DIR, "..", "data", "chats")
-os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
+
+# Vercel serverless filesystem is read-only.
+# /tmp is writable during the lifetime of the serverless instance.
+RUNTIME_DIR = "/tmp/justicelens"
+
+USERS_FILE = os.path.join(RUNTIME_DIR, "users.json")
+CHATS_DIR = os.path.join(RUNTIME_DIR, "chats")
+
+os.makedirs(RUNTIME_DIR, exist_ok=True)
 os.makedirs(CHATS_DIR, exist_ok=True)
 
 def load_users():
