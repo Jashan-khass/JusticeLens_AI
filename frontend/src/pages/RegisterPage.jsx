@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../App";
 import { registerAPI } from "../services/api";
 import toast from "react-hot-toast";
 
@@ -8,6 +9,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const nav = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -17,8 +19,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await registerAPI(email, password, name);
-      localStorage.setItem("jl_token", data.token);
-      localStorage.setItem("jl_user", JSON.stringify(data.user));
+      login(data.user, data.token);
       toast.success("Account created successfully!");
       nav("/");
     } catch (err) {
@@ -60,4 +61,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

@@ -104,6 +104,8 @@ Combined with Legal Knowledge Base → Final Answer
 
 ## ✅ Features
 - 🤖 **RAG Chatbot** – Answers from 149 SC PDFs using vector search
+- 👤 **Guest access** – Use the chatbot and legal tools without creating an account; signed-in users can optionally save chat history
+- 🔑 **Authentication** – Login and signup use local password hashing and JWTs; no paid API key is required
 - 🌐 **Web Augmentation** – DuckDuckGo search (no API key)
 - 🔢 **TF-IDF Vector DB** – 2,290 chunks, 15,000 features
 - 📊 **Analytics** – Bar, Doughnut, Line charts

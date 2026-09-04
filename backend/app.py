@@ -934,8 +934,10 @@ def health():
     return jsonify({"status": "ok", "chunks": len(CHUNKS), "cases": len(CASES), "rag": "active"})
 
 @app.route("/api/chat", methods=["POST"])
-@require_auth
-def chat(user_id):
+def chat():
+    # Chat is available to guests; only authenticated users get persistent history.
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    user_id = verify_jwt(token)
     data = request.get_json() or {}
     message = data.get("message", "").strip()
     mode = data.get("mode", "rag")  # rag | web | both
@@ -975,8 +977,8 @@ def chat(user_id):
     # ── Gemini AI Answer (grounded on RAG + web results above, in selected language) ──
     gemini_answer = get_ai_summary(message, kb, rag_text, web_results, lang)
 
-    # Save to chat history
-    try:
+    # Save history only when the request belongs to a valid authenticated user.
+    if user_id:
         chat_data = load_chats(user_id)
         chat_data["messages"].append({
             "id": len(chat_data["messages"]) + 1,
@@ -987,8 +989,6 @@ def chat(user_id):
             "mode": mode
         })
         save_chats(user_id, chat_data)
-    except Exception:
-        pass
     
     return jsonify({
         "gemini_answer": gemini_answer,

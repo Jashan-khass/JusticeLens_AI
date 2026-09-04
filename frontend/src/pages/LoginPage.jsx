@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../App";
 import { loginAPI } from "../services/api";
 import toast from "react-hot-toast";
 
@@ -7,6 +8,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const nav = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -15,8 +17,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await loginAPI(email, password);
-      localStorage.setItem("jl_token", data.token);
-      localStorage.setItem("jl_user", JSON.stringify(data.user));
+      login(data.user, data.token);
       toast.success("Login successful!");
       nav("/");
     } catch (err) {
@@ -54,4 +55,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
