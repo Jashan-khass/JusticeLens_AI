@@ -616,6 +616,24 @@ KB = {
         "steps": ["Call NALSA: 15100 for free legal aid", "Identify exact type of legal problem", "Approach nearest District Legal Aid Center", "Collect and preserve all evidence", "File complaint within limitation period"],
         "helplines": ["NALSA: 15100 (Free Legal Aid)", "Police: 112", "Women: 181"],
         "sr": 60, "dur": "Varies", "risk": "Medium"
+    },
+    "law_definition": {
+        "title": "Understanding Law",
+        "icon": "📚",
+        "laws": ["The Constitution of India is the supreme law", "Acts are laws passed by Parliament or a State Legislature", "Rules and regulations explain how an Act is applied", "Courts interpret and enforce laws"],
+        "rights": ["Everyone is equal before the law", "You can seek legal representation", "You can approach a court or legal-aid authority", "You should receive a fair hearing"],
+        "steps": ["Identify the subject and jurisdiction", "Read the relevant Act and current rules", "Collect facts and supporting documents", "Get advice from a qualified lawyer or free legal-aid service"],
+        "helplines": ["NALSA free legal aid: 15100"],
+        "sr": 60, "dur": "Varies", "risk": "Medium"
+    },
+    "legal_case": {
+        "title": "Legal Case Basics",
+        "icon": "⚖️",
+        "laws": ["Civil cases generally concern rights, money, property, or contracts", "Criminal cases concern offences investigated and prosecuted by the State", "The Constitution and procedural laws govern court remedies"],
+        "rights": ["Notice of proceedings", "Opportunity to present evidence and arguments", "Legal representation", "Appeal or review where permitted by law"],
+        "steps": ["Identify whether the matter is civil, criminal, family, consumer, or constitutional", "Preserve notices, contracts, messages, and other evidence", "Check limitation periods and the correct court", "Consult a lawyer or legal-aid service before filing"],
+        "helplines": ["NALSA free legal aid: 15100", "Emergency: 112"],
+        "sr": 60, "dur": "Varies", "risk": "Medium"
     }
 }
 
@@ -637,6 +655,10 @@ LAWS_DB = {
 # ── NLP Problem Detection ────────────────────────
 def detect_problem(text):
     t = text.lower()
+    if any(phrase in t for phrase in ("what is law", "meaning of law", "define law", "law kya hai", "kanun kya hai")):
+        return "law_definition"
+    if any(phrase in t for phrase in ("what is a legal case", "what is legal case", "meaning of legal case", "legal case kya hai")):
+        return "legal_case"
     kw = {
         "theft": ["chori","chor","stolen","steal","thief","robbery","snatch","lift","gayab","missing","lost","chura","चोरी","చోరి","ચોરી","hack","hawala"],
         "fraud": ["fraud","scam","cheat","cyber","online","phishing","hack","upi","debit","money stolen","account","otp","fake call"],
