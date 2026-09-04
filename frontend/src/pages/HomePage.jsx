@@ -296,6 +296,12 @@ function AnalysisCard({ data, lang="en" }) {
         </div>
       </div>
 
+      {data.gemini_answer && (
+        <div style={{ padding: "16px", background: "rgba(91,140,245,.06)", borderBottom: "1px solid var(--border)", fontSize: 13.5, lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
+          {data.gemini_answer.replace(/\*\*/g, "")}
+        </div>
+      )}
+
       {/* RAG Answer */}
       {showCaseResearch && <Section color="#2ECC9A" title={u.ragSec}>
         <div style={{ background: "rgba(46,204,154,.06)", border: "1px solid rgba(46,204,154,.2)", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, lineHeight: 1.75, color: "var(--text)", marginBottom: 8 }}>
