@@ -22,7 +22,11 @@ app.secret_key = os.urandom(24).hex()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── JWT Auth Config ─────────────────────────────
-JWT_SECRET = hashlib.sha256(os.urandom(32)).hexdigest()
+# Keep tokens valid across serverless invocations. Set JWT_SECRET in production
+# to replace the development fallback with a private deployment secret.
+JWT_SECRET = os.getenv("JWT_SECRET") or hashlib.sha256(
+    b"justicelens-local-jwt-secret"
+).hexdigest()
 JWT_ALGO = "HS256"
 
 # Vercel serverless filesystem is read-only.
@@ -30,16 +34,19 @@ JWT_ALGO = "HS256"
 RUNTIME_DIR = "/tmp/justicelens"
 
 USERS_FILE = os.path.join(RUNTIME_DIR, "users.json")
+SEED_USERS_FILE = os.path.join(BASE_DIR, "..", "data", "users.json")
 CHATS_DIR = os.path.join(RUNTIME_DIR, "chats")
 
 os.makedirs(RUNTIME_DIR, exist_ok=True)
 os.makedirs(CHATS_DIR, exist_ok=True)
 
 def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
+    users = {}
+    for path in (SEED_USERS_FILE, USERS_FILE):
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                users.update(json.load(f))
+    return users
 
 def save_users(users):
     with open(USERS_FILE, 'w') as f:

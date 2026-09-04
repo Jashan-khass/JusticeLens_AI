@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const nav = useNavigate();
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
   const [profile, setProfile] = useState({ email: "", name: "", bio: "", avatar_url: "" });
   const [saving, setSaving] = useState(false);
   const [unauth, setUnauth] = useState(false);
@@ -24,7 +24,13 @@ export default function ProfilePage() {
       if (res && res.profile) setProfile(res.profile);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load profile");
+      if (err?.response?.status === 401) {
+        logout();
+        setUnauth(true);
+        toast.error("Your session expired. Please login again.");
+      } else {
+        toast.error("Failed to load profile");
+      }
     }
   };
 

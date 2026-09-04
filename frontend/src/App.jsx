@@ -91,6 +91,8 @@ function NavBar({ theme, toggleTheme, onOpenChat }) {
                 <div className="user-initial">{(user.name || user.email || 'U').charAt(0).toUpperCase()}</div>
               )}
             </div>
+            <button className="btn btn-o btn-sm" onClick={() => nav('/profile')}>Profile</button>
+            <button className="btn btn-o btn-sm" onClick={handleLogout}>Logout</button>
           </div>
         ) : (
           <button className="avatar-btn" onClick={() => nav('/login')} title="Login">
@@ -310,4 +312,3 @@ export default function App() {
     </AuthContext.Provider>
   );
 }
-
